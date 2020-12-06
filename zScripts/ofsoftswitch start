@@ -1,0 +1,2 @@
+sudo ofdatapath --detach punix:/var/run/dp0 -d 000000000001 -i wlan0
+sudo ofprotocol unix:/var/run/dp0 tcp:127.0.0.1:6633

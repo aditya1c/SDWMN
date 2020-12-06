@@ -1,0 +1,25 @@
+remountrw
+date -s "03/dd/2015 hh:mm:ss"
+ps -A | grep ovs
+ifconfig wlan0 down
+iwconfig wlan0 mode ad-hoc essid open_mesh freq 2.437G
+ifconfig wlan0 10.10.xx.xx netmask 255.255.0.0 up
+mkdir -p /usr/local/etc/openvswitch
+ovsdb-tool create /usr/local/etc/openvswitch/conf.db vswitchd/vswitch.ovsschema
+ovsdb-server --remote=punix:/usr/local/var/run/openvswitch/db.sock \
+                     --remote=db:Open_vSwitch,Open_vSwitch,manager_options \
+                     --pidfile --detach
+ovs-vsctl --no-wait init
+ovs-vswitchd --pidfile --detach
+ovs-vsctl del-br br0
+ovs-vsctl add-br br0 -- set Bridge br0 fail-mode=secure
+ovs-vsctl set bridge br0 other-config:datapath-id=12 or 16 hex bits
+ovs-vsctl add-port br0 wlan0
+ifconfig wlan0 0
+ifconfig br0 10.10.xx.xx netmask 255.255.0.0
+route add default gw 10.10.1.1 br0
+
+ovs-vsctl set-controller br0 tcp:10.10.110.1:6633 tcp:10.10.110.2:6633
+
+ovs-vsctl show
+ovs-ofctl show br0

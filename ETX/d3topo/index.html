@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+.link {
+  stroke: #a1c820;
+  stroke-opacity: .6;
+  }
+
+.node {
+  stroke: #6d8092;
+  stroke-width: 1px;
+  fill: #273142;
+  }
+
+#graph {
+  width: 100%;
+  }
+
+</style>
+</head>
+
+<body>
+<div id="graph">
+</div>
+
+
+<script src="d3.v3.min.js" charset="utf-8"></script>
+<script src="underscore-min.js"></script>
+<script>
+d3.tsv("current-topo.tsv", function(d) {
+  width=document.getElementById("graph").offsetWidth;
+  height=768;
+  var force = d3.layout.force()
+      .charge(-40)
+      .linkDistance(25)
+      .size([width, height]);
+
+   var svg = d3.select("#graph").append("svg")
+       .attr("width", width)
+       .attr("height", height);
+           
+  ips=_.reduce(_.map(d,function(d) {
+    return ([d.dest,d.src])}),
+      function(x,y) { return (x.concat(y)) },[])
+  
+  degree=_.reduce(ips,function(x,y) {
+    if (x[y]==undefined) {
+      x[y]=1;
+      }
+    else {
+      x[y]+=1;
+      }
+    return (x)},{})
+  
+  ips=_.uniq(ips)
+  ip_lookup=_.reduce(_.map(ips,function(d,n) { return ([d,n])}),
+    function(x,y) {x[y[0]]=y[1]; return(x)},{});
+  
+  radius = function(degree) {
+    max=_.max(_.values(degree));
+    min=1;
+    max_rad=10;
+    min_rad=3;
+    return function(n) {
+      return (((n-min)/(max-min)*(max_rad-min_rad)+min_rad))
+      }
+    }(degree);
+
+  function cost(x) {
+    var c=1/x*5;
+    if (isNaN(c)) {
+      return 0.2;
+      }
+    else { return (c);}}
+  var graph={
+    "nodes": _.map(ips, function(d){return ({"name":d,"degree":degree[d]})}),
+    "links": _.map(d, function(d) {
+      return ({"source": ip_lookup[d.dest],
+        "target": ip_lookup[d.src],
+        "value": cost(d.cost)})})
+     }
+
+  force
+     .nodes(graph.nodes)
+     .links(graph.links)
+     .start();
+
+  var link = svg.selectAll(".link")
+        .data(graph.links)
+        .enter().append("line")
+        .attr("class", "link")
+        .style("stroke-width", function(d) { return Math.sqrt(d.value); });
+  
+   var node = svg.selectAll(".node")
+         .data(graph.nodes)
+         .enter().append("circle")
+         .attr("class", "node")
+         .attr("r", function(d) { return (radius(d.degree))})
+         .attr("name", function(d) { return (d.name)})
+         .call(force.drag);
+
+    node.append("title")
+          .text(function(d) { return d.name; });
+   
+
+    force.on("tick", function() {
+        link.attr("x1", function(d) { return d.source.x; })
+                .attr("y1", function(d) { return d.source.y; })
+                .attr("x2", function(d) { return d.target.x; })
+                .attr("y2", function(d) { return d.target.y; });
+         node.attr("cx", function(d) { return d.x; })
+              .attr("cy", function(d) { return d.y; }); });
+
+  });
+</script>
+</body>
+</html>
